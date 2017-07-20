@@ -1,7 +1,8 @@
 ###########################################################################
 # Script Python para cálculo de perdas de chaveamento na topologia        #
-# sete níveis proposta.                                                   #
-#                                                                         #
+# sete níveis proposta. Disponível em:                                    #
+# https://github.com/martinbra/mestrado_perdas7niveis/                    #
+#                                                                         # 
 # Versão utilizada: Python 2.7                                            #
 ###########################################################################
 
@@ -48,7 +49,7 @@ fat_crista = 3.0 # fat_crista >= srqt(2)
 fr = 60      # Hz
 
 # Frequência da portadora/chaveamento
-fp = 21600   # Hz
+fp = 21600//2   # Hz
 
 ###########################################################################
 # DEFINIÇÃO DE FUNÇÕES DE PERDA EM FUNCAO DO COMPONENTE UTILIZADO         #
@@ -74,6 +75,19 @@ def perdaConducaoD(i):
     return Vceon * i
     
 def perdaChaveamentoD(i):
+    """retorna perda em J do DIODO em funcao da corrente"""
+    Eon = 0.001 * i
+    Eoff = 0.002 * i
+    return Eon+Eoff
+
+
+def perdaConducaoDPonte(i):
+    """retorna perda em W do DIODO em funcao da corrente"""
+    #TODO CORRIGIR VALORES E EQUACAO
+    Vceon = 1.5 + 0.05*i
+    return Vceon * i
+    
+def perdaChaveamentoDPonte(i):
     """retorna perda em J do DIODO em funcao da corrente"""
     Eon = 0.001 * i
     Eoff = 0.002 * i
@@ -288,9 +302,17 @@ perda_S3D = 0
 perda_S4Q = 0
 perda_S4D = 0
 perda_S5Q = 0
-perda_S5D = 0
+#perda_S5D = 0
 perda_S6Q = 0
-perda_S6D = 0
+#perda_S6D = 0
+
+#TODO testes
+perda_S5Dp = 0
+perda_S5Dn = 0
+#perda_S5Ds = 0
+perda_S6Dp = 0
+perda_S6Dn = 0
+#perda_S6Ds = 0
 
 # Temos "mf" ciclos de chaveamento durante um ciclo do sinal de referencia
 # Para cada ciclo de chaveamento, será calculado o ângulo do chaveamento,
@@ -345,16 +367,25 @@ for i in range(int(mf)): # loop de i variando de 0,1,2 ... "mf"
         d = 1-(-vref-V2)/(V1)
 
     # Cálculo das perdas para as chaves
-    if(angulo < pi):
-        perda_Qs = perdaChaveamentoQ(i)
-        perda_Qc = perdaConducaoQ(i)
-        perda_Ds = perdaChaveamentoD(i)
-        perda_Dc = perdaConducaoD(i)
+    i_positivo = (i >= 0)
+    
+    #if(angulo < pi):
+    if(i_positivo):
+        perda_Qs  = perdaChaveamentoQ(i)
+        perda_Qc  = perdaConducaoQ(i)
+        perda_Ds  = perdaChaveamentoD(i)
+        perda_Dc  = perdaConducaoD(i)
+        perda_DPs = perdaChaveamentoDPonte(i)
+        perda_DPc = perdaConducaoDPonte(i)
     else:        
-        perda_Qs = perdaChaveamentoQ(-i)
-        perda_Qc = perdaConducaoQ(-i)
-        perda_Ds = perdaChaveamentoD(-i)
-        perda_Dc = perdaConducaoD(-i)
+        perda_Qs  = perdaChaveamentoQ(-i)
+        perda_Qc  = perdaConducaoQ(-i)
+        perda_Ds  = perdaChaveamentoD(-i)
+        perda_Dc  = perdaConducaoD(-i)
+        perda_DPs = perdaChaveamentoDPonte(-i)
+        perda_DPc = perdaConducaoDPonte(-i)
+
+    
 
     # As perdas calculadas são adicionadas às chaves de acordo com o estado
     # de cada chave no intervalo.
@@ -362,93 +393,89 @@ for i in range(int(mf)): # loop de i variando de 0,1,2 ... "mf"
     # ii) Perda de comutação às chaves que comutaram neste intervalo.
     # iii) Avaliação da adição das perdas à chave ou ao diodo em função do
     #      sentido da corrente.
-    if intervalo == "A":
-        perda_S1Q += 0                          #0
-        perda_S1D += 0                          #0
-        perda_S2Q += 0                          #0
-        perda_S2D += 0                          #0
-        perda_S3Q += perda_Qc                   #1
-        perda_S3D += 0                          #1  #TODO Corrente reversa
-        perda_S4Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S4D += 0                          #D' #TODO Corrente reversa
-        perda_S5Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S5D += perda_Dc*( d ) + perda_Ds  #D
-        perda_S6Q += 0                          #0
-        perda_S6D += 0	                        #0
+    if intervalo == "A" and i_positivo:
+        perda_S3Q  = perda_Qc *( 1 )
+        perda_S4D  = perda_Dc *(1-d) + perda_Ds
+        perda_S5Q  = perda_Qc *( d ) + perda_Qs
+        perda_S5Dp = perda_DPc*( d ) + perda_DPs
         
-    elif intervalo == "B":
-        perda_S1Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S1D += 0                          #D  #TODO Corrente reversa
-        perda_S2Q += 0                          #0
-        perda_S2D += 0                          #0
-        perda_S3Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S3D += 0                          #D' #TODO Corrente reversa
-        perda_S4Q += 0                          #0
-        perda_S4D += 0                          #0
-        perda_S5Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S5D += perda_Dc*(1-d) + perda_Ds  #D'
-        perda_S6Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S6D += perda_Dc*( d ) + perda_Ds  #D
+    if intervalo == "A" and not i_positivo:
+        perda_S3D  = perda_Dc *( 1 )
+        perda_S4Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S5Q  = perda_Qc *( d ) + perda_Qs
+        perda_S5Dp = perda_DPc*( d ) + perda_DPs
         
-    elif intervalo == "C":
-        perda_S1Q += perda_Qc                   #1
-        perda_S1D += 0                          #1  #TODO Corrente reversa
-        perda_S2Q += 0                          #0
-        perda_S2D += 0                          #0
-        perda_S3Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S3D += 0                          #D #TODO Corrente reversa
-        perda_S4Q += 0	                        #0
-        perda_S4D += 0	                        #0
-        perda_S5Q += 0	                        #0
-        perda_S5D += 0	                        #0
-        perda_S6Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S6D += perda_Dc*(1-d) + perda_Ds  #D'
+    elif intervalo == "B" and i_positivo:
+        perda_S1Q  = perda_Qc *( d ) + perda_Qs
+        perda_S3Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S5Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S5Dp = perda_DPc*(1-d) + perda_DPs
+        perda_S6Q  = perda_Qc *( d ) + perda_Qs
+        perda_S6Dp = perda_DPc*( d ) + perda_DPs
+
+    elif intervalo == "B" and not i_positivo:
+        perda_S1D  = perda_Dc *( d ) + perda_Ds
+        perda_S3D  = perda_Dc *(1-d) + perda_Ds
+        perda_S5Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S5Dp = perda_DPc*(1-d) + perda_DPs
+        perda_S6Q  = perda_Qc *( d ) + perda_Qs
+        perda_S6Dn = perda_DPc*( d ) + perda_DPs
         
-    elif intervalo == "D":
-        perda_S1Q += 0                          #0
-        perda_S1D += 0                          #0
-        perda_S2Q += 0                          #0
-        perda_S2D += 0                          #0
-        perda_S3Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S3D += 0                          #D  #TODO Corrente reversa
-        perda_S4Q += perda_Qc                   #1
-        perda_S4D += 0                          #1  #TODO Corrente reversa
-        perda_S5Q += 0                          #0
-        perda_S5D += 0	                        #0
-        perda_S6Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S6D += perda_Dc*(1-d) + perda_Ds  #D'
+    elif intervalo == "C" and i_positivo:
+        perda_S1Q  = perda_Qc *( 1 )
+        perda_S3Q  = perda_Qc *( d ) + perda_Qs
+        perda_S6Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S6Dp = perda_DPc*(1-d) + perda_DPs
         
-    elif intervalo == "E":
-        perda_S1Q += 0                          #0
-        perda_S1D += 0                          #0
-        perda_S2Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S2D += 0                          #D' #TODO Corrente reversa
-        perda_S3Q += 0                          #0
-        perda_S3D += 0                          #0
-        perda_S4Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S4D += 0                          #D  #TODO Corrente reversa
-        perda_S5Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S5D += perda_Dc*(1-d) + perda_Ds  #D'
-        perda_S6Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S6D += perda_Dc*( d ) + perda_Ds  #D
+    elif intervalo == "C" and not i_positivo:
+        perda_S1D  = perda_Dc *( 1 )
+        perda_S3D  = perda_Dc *( d ) + perda_Ds
+        perda_S6Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S6Dn = perda_DPc*(1-d) + perda_DPs
         
-    else: #intervalo == "F"
-        perda_S1Q += 0                          #0
-        perda_S1D += 0                          #0
-        perda_S2Q += perda_Qc                   #1
-        perda_S2D += 0                          #1  #TODO Corrente reversa
-        perda_S3Q += 0	                        #0
-        perda_S3D += 0	                        #0
-        perda_S4Q += perda_Qc*(1-d) + perda_Qs  #D'
-        perda_S4D += 0                          #D' #TODO Corrente reversa
-        perda_S5Q += perda_Qc*( d ) + perda_Qs  #D
-        perda_S5D += perda_Dc*( d ) + perda_Ds  #D
-        perda_S6Q += 0	                        #0
-        perda_S6D += 0	                        #0
+    elif intervalo == "D" and i_positivo:
+        perda_S3Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S4D  = perda_Dc *( 1 )
+        perda_S6Q  = perda_Qc *( d ) + perda_Qs
+        perda_S6Dp = perda_DPc*( d ) + perda_DPs
+        
+    elif intervalo == "D" and not i_positivo:
+        perda_S3D  = perda_Dc *(1-d) + perda_Ds
+        perda_S4Q  = perda_Qc *( 1 )
+        perda_S6Q  = perda_Qc *( d ) + perda_Qs
+        perda_S6Dn = perda_DPc*( d ) + perda_DPs
+        
+    elif intervalo == "E" and i_positivo:
+        perda_S2D  = perda_Dc *( d ) + perda_Ds
+        perda_S4D  = perda_Dc *(1-d) + perda_Ds
+        perda_S5Q  = perda_Qc *( d ) + perda_Qs
+        perda_S5Dp = perda_DPc*( d ) + perda_DPs
+        perda_S6Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S6Dp = perda_DPc*(1-d) + perda_DPs
+        
+    elif intervalo == "E" and not i_positivo:
+        perda_S2Q  = perda_Qc *( d ) + perda_Qs
+        perda_S4Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S5Q  = perda_Qc *( d ) + perda_Qs
+        perda_S5Dp = perda_DPc*( d ) + perda_DPs
+        perda_S6Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S6Dn = perda_DPc*(1-d) + perda_DPs
+        
+    elif intervalo == "F" and i_positivo:
+        perda_S2D  = perda_Dc *( 1 )
+        perda_S4D  = perda_Dc *( d ) + perda_Ds
+        perda_S5Q  = perda_Qc *(1-d) + perda_Qs
+        perda_S5Dp = perda_DPc*(1-d) + perda_DPs
+
+    elif intervalo == "F" and not i_positivo:
+        perda_S2Q  = perda_Qc*( 1 )
+        perda_S4Q  = perda_Qc*( d ) + perda_Qs
+        perda_S5Q  = perda_Qc*(1-d) + perda_Qs
+        perda_S5Dp = perda_DPc*(1-d) + perda_DPs
         
     # Salva os valores calculados neste chaveamento nos vetores
     # Para criação de gráfico.
-    RAZAOCICLICA.append(d)
+    RAZAOCICLICA.append(d * 100) # Transforma em porcentagem
     CORRENTE.append(i)
     TENSAOREF.append(vref)
     POTENCIAINST.append(vref*i)
@@ -482,28 +509,31 @@ str_chaveamentos = ", ".join([str(int(c)) for c in chaveamentos])
 print("Número de ciclos em cada intervalo (A a F):\n    "+str_chaveamentos)
 
 print("Perdas nas chaves:")
-print("    S1 Q = "+'{0:.2f}'.format(perda_S1Q)+" W")
-print("       D = "+'{0:.2f}'.format(perda_S1D)+" W")
-print("    S2 Q = "+'{0:.2f}'.format(perda_S2Q)+" W")
-print("       D = "+'{0:.2f}'.format(perda_S2D)+" W")
-print("    S3 Q = "+'{0:.2f}'.format(perda_S3Q)+" W")
-print("       D = "+'{0:.2f}'.format(perda_S3D)+" W")
-print("    S4 Q = "+'{0:.2f}'.format(perda_S4Q)+" W")
-print("       D = "+'{0:.2f}'.format(perda_S4D)+" W")
-print("    S5 Q = "+'{0:.2f}'.format(perda_S5Q)+" W")
-print("       D = "+'{0:.2f}'.format(perda_S5D)+" W")
-print("    S6 Q = "+'{0:.2f}'.format(perda_S6Q)+" W")
-print("       D = "+'{0:.2f}'.format(perda_S6D)+" W")
+print("    S1 Q  = "+'{0:.2f}'.format(perda_S1Q) +" W")
+print("       D  = "+'{0:.2f}'.format(perda_S1D) +" W")
+print("    S2 Q  = "+'{0:.2f}'.format(perda_S2Q) +" W")
+print("       D  = "+'{0:.2f}'.format(perda_S2D) +" W")
+print("    S3 Q  = "+'{0:.2f}'.format(perda_S3Q) +" W")
+print("       D  = "+'{0:.2f}'.format(perda_S3D) +" W")
+print("    S4 Q  = "+'{0:.2f}'.format(perda_S4Q) +" W")
+print("       D  = "+'{0:.2f}'.format(perda_S4D) +" W")
+print("    S5 Q  = "+'{0:.2f}'.format(perda_S5Q) +" W")
+print("       Dp = "+'{0:.2f}'.format(perda_S5Dp)+" W")
+print("       Dn = "+'{0:.2f}'.format(perda_S5Dn)+" W")
+print("    S6 Q  = "+'{0:.2f}'.format(perda_S6Q) +" W")
+print("       Dp = "+'{0:.2f}'.format(perda_S6Dp)+" W")
+print("       Dn = "+'{0:.2f}'.format(perda_S6Dn)+" W")
 
 print("\n")
 potencia_saida = sum(POTENCIAINST)/len(POTENCIAINST)
-perdas_bidir_ponte = perda_S1Q +   perda_S1D + perda_S2Q +   perda_S2D +  \
-                     perda_S3Q +   perda_S3D + perda_S4Q +   perda_S4D +  \
-                     perda_S5Q + 2*perda_S5D + perda_S6Q + 2*perda_S6D
+perdas_bidir_ponte = perda_S1Q +   perda_S1D  + perda_S2Q + perda_S2D +  \
+                     perda_S3Q +   perda_S3D  + perda_S4Q + perda_S4D +  \
+                     perda_S5Q + 2*perda_S5Dp + 2*perda_S5Dn          +  \
+                     perda_S6Q + 2*perda_S6Dp + 2*perda_S6Dn
 
 perdas_bidir_2ch   = perda_S1Q +   perda_S1D + perda_S2Q +   perda_S2D +  \
                      perda_S3Q +   perda_S3D + perda_S4Q +   perda_S4D +  \
-                     perda_S5Q +   perda_S5D + perda_S6Q +   perda_S6D
+                     perda_S5Q +   perda_S5Dp + perda_S6Q +   perda_S6Dp
 
 rend_ponte = (potencia_saida - perdas_bidir_ponte) / potencia_saida * 100
 rend_2ch   = (potencia_saida - perdas_bidir_2ch  ) / potencia_saida * 100
@@ -513,7 +543,8 @@ print("    Rendimento = "+'{0:.2f}'.format(rend_ponte)+" %")
 print("Topologia com chave bidirecional em anti-série")
 print("    Rendimento = "+'{0:.2f}'.format(rend_2ch)  +" %")
 
-plot([100*x for x in RAZAOCICLICA],label=u"Razão Cíclica (%)")
+# Gera gráfico das formas de onda.
+plot(RAZAOCICLICA,label=u"Razão Cíclica (%)")
 plot(CORRENTE,label=u"Corrente (A)")
 plot(TENSAOREF,label=u"Tensão de Referência (V)")
 legend()
@@ -521,21 +552,4 @@ xlabel(u"Índice do Ciclo de Chaveamento")
 ylabel(u"Amplitude")
 xlim([0,mf])
 ylim([min(-V1-V2,min(CORRENTE))*1.1,max(V1+V2,max(CORRENTE))*1.1])
-#plotlevels()
 show()
-
-
-print "\n\n"
-print perda_S1Q, perda_S1D
-print perda_S2Q, perda_S2D
-print perda_S3Q, perda_S3D
-print perda_S4Q, perda_S4D
-print perda_S5Q, perda_S5D
-print perda_S6Q, perda_S6D
-        
-#corrente = [100*formaDeOndaCorrenteNaoLinear(x*2*pi/360) for x in range(360)]
-#corrente2 = [100*formaDeOndaCorrente(x*2*pi/360) for x in range(360)]
-
-#plot([Ar*sin(x*2*pi/mf) for x in range(int(mf))])
-#plot(corrente)
-#plot(corrente2)
