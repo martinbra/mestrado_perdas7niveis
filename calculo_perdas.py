@@ -43,7 +43,7 @@ Ief = 5.4    # Aef
 I_linear = True # "True" ou "False"
 
 # Defasamento Corrente, utilizado apenas para corrente linear 
-I_def = 0#90/180*pi # rad (-pi/2 <= I_def <= pi/2)
+I_def = 0 # rad (-pi/2 <= I_def <= pi/2)
 
 # Fator de Crista, utilizado apenas para corrente não linear.
 # Simula Carga não linear como pulsos semi-senoidais (positivo e negativo)
@@ -78,10 +78,13 @@ def perdaConducaoQ(i):
 def perdaChaveamentoQ(i):
     """retorna perda em J da CHAVE em funcao da corrente"""
     # Para IRG4PC50UD
-    x=[0,25.32189,2.40230] # A
-    y=[0,53.77682,6.56322] # mJ
+    perdas_a_5ohms = 1.58282
+    perdas_a_Rgate = 2.65279
+    correcao_perdas = perdas_a_Rgate/perdas_a_5ohms
+    x=[0,13.5540,25.1140,39.409,54.0930] # A
+    y=[0, 1.1391, 2.3747, 4.484, 6.5859] # mJ
     Eonoff = interpolar(i,x,y)
-    return Eonoff/1000 # Joule
+    return Eonoff/1000 * correcao_perdas # Joule
 
 def perdaConducaoD(i):
     """retorna perda em j do DIODO em funcao da corrente"""
@@ -108,17 +111,22 @@ def perdaChaveamentoD(i,vblock):
 def perdaConducaoDPonte(i):
     """retorna perda em J do DIODO em funcao da corrente"""
     # UF5408
-    if(i<0.01):
-        Vceon = 0.6
-    elif(i<1.7):
-        a= -1.88919
-        b=  6.76307
-        c= -5.25758
-        Vceon = (-b+sqrt(b**2-4*a*(c-log10(i))))/(2*a)
+##    if(i<0.01):
+##        Vceon = 0.6
+##    elif(i<1.7):
+##        a= -1.88919
+##        b=  6.76307
+##        c= -5.25758
+##        Vceon = (-b+sqrt(b**2-4*a*(c-log10(i))))/(2*a)
+##    else:
+##        a= 0.754014
+##        b=-0.50581
+##        Vceon = (log10(i)+b)/a
+    
+    if(i<0.01): Vceon = 0.6
     else:
-        a= 0.754014
-        b=-0.50581
-        Vceon = (log10(i)+b)/a
+        Vceon = 0.0430482*log10(i)**4 + 0.1598030*log10(i)**3 + \
+                0.2299320*log10(i)**2 + 0.4327740*log10(i) + 1.12748
 
     W = Vceon*i # W
     t = 1/fp # s
@@ -229,18 +237,34 @@ def grausParaRad(graus):
 ###########################################################################
 # DEFINIÇÃO DE FUNÇÕES TEMPORARIAS (apenas para desenvolvimento do codigo)#
 ###########################################################################
-def plotlevels():
+def plotlevels(y=None):
     """
     Desenha linhas verticais nos angulos theta1 e theta2;
     Desenha linhas horizontais nos níveis de tensão V1 e V2.
     """
-    plot([0,mf],[V1,V1])
-    plot([0,mf],[V2,V2])
     ang1 = theta1*mf/(2*pi)
     ang2 = theta2*mf/(2*pi)
-    plot([ang1,ang1],[0,V1+V2])
-    plot([ang2,ang2],[0,V1+V2])
-
+    if y==None:
+        plot([0,mf],[V1,V1])
+        plot([0,mf],[V2,V2])
+        plot([ang1,ang1],[0,V1+V2])
+        plot([ang2,ang2],[0,V1+V2])
+    else:
+        maxy = max(y)
+        ang3 = theta3*mf/(2*pi)
+        ang4 = theta4*mf/(2*pi)
+        ang5 = theta5*mf/(2*pi)
+        ang6 = theta6*mf/(2*pi)
+        ang7 = theta7*mf/(2*pi)
+        ang8 = theta8*mf/(2*pi)
+        plot([ang1,ang1],[0,maxy])
+        plot([ang2,ang2],[0,maxy]) 
+        plot([ang3,ang3],[0,maxy])
+        plot([ang4,ang4],[0,maxy]) 
+        plot([ang5,ang5],[0,maxy])
+        plot([ang6,ang6],[0,maxy]) 
+        plot([ang7,ang7],[0,maxy])
+        plot([ang8,ang8],[0,maxy]) 
 
 ###########################################################################
 # TESTES DE VALIDAÇÃO DAS ENTRADAS                                        #
@@ -334,6 +358,12 @@ RAZAOCICLICA = []
 CORRENTE     = []
 TENSAOREF    = []
 POTENCIAINST = []
+vperda_Qs  = []
+vperda_Qc  = []
+vperda_Ds  = []
+vperda_Dc  = []
+vperda_DPs = []
+vperda_DPc = []
 
 #Variáveis para salvar as perdas em cada chave e diodo
 perda_S1Q = [] # Perda da Chave S1
@@ -431,6 +461,13 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
     perda_Dc  = perdaConducaoD(iabs)
     perda_DPs = perdaChaveamentoDPonte(iabs,abs(vblock))
     perda_DPc = perdaConducaoDPonte(iabs)
+
+    vperda_Qs.append(perda_Qs )
+    vperda_Qc.append(perda_Qc )
+    vperda_Ds.append(perda_Ds )
+    vperda_Dc.append(perda_Dc )
+    vperda_DPs.append(perda_DPs)
+    vperda_DPc.append(perda_DPc)
 
     # Determinação do Sentido da Corrente
     i_positivo = (i >= 0)    
@@ -567,15 +604,16 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
 
     else:
         print "error", intervalo, i_positivo
-    
-    if (k+1) > len(perda_S1Q):   perda_S1Q.append(0)
-    if (k+1) > len(perda_S1D):   perda_S1D.append(0)
-    if (k+1) > len(perda_S2Q):   perda_S2Q.append(0)
-    if (k+1) > len(perda_S2D):   perda_S2D.append(0)
-    if (k+1) > len(perda_S3Q):   perda_S3Q.append(0)
-    if (k+1) > len(perda_S3D):   perda_S3D.append(0)
-    if (k+1) > len(perda_S4Q):   perda_S4Q.append(0)
-    if (k+1) > len(perda_S4D):   perda_S4D.append(0)
+
+    #Insere ZERO nos vetores que não foram atualizados.
+    if (k+1) > len(perda_S1Q):    perda_S1Q.append(0)
+    if (k+1) > len(perda_S1D):    perda_S1D.append(0)
+    if (k+1) > len(perda_S2Q):    perda_S2Q.append(0)
+    if (k+1) > len(perda_S2D):    perda_S2D.append(0)
+    if (k+1) > len(perda_S3Q):    perda_S3Q.append(0)
+    if (k+1) > len(perda_S3D):    perda_S3D.append(0)
+    if (k+1) > len(perda_S4Q):    perda_S4Q.append(0)
+    if (k+1) > len(perda_S4D):    perda_S4D.append(0)
     if (k+1) > len(perda_S5pQ):   perda_S5pQ.append(0)
     if (k+1) > len(perda_S5pDp):  perda_S5pDp.append(0)
     if (k+1) > len(perda_S5pDn):  perda_S5pDn.append(0)
@@ -750,6 +788,7 @@ subplot(7,2,13)
 plot(perda_S6pDp)
 
 subplot(7,2,14)
+plotlevels(perda_S6pDn)
 plot(perda_S6pDn)
 
 figure()
@@ -763,6 +802,15 @@ subplot(4,2,5); plot(perda_S6sQp)
 subplot(4,2,6); plot(perda_S6sQn)
 subplot(4,2,7); plot(perda_S6sDp)
 subplot(4,2,8); plot(perda_S6sDn)
+
+figure()
+
+subplot(3,2,1); plot(vperda_Qs ,label="Qs"); legend()
+subplot(3,2,2); plot(vperda_Qc ,label="Qc"); legend()
+subplot(3,2,3); plot(vperda_Ds ,label="Ds"); legend()
+subplot(3,2,4); plot(vperda_Dc ,label="Dc"); legend()
+subplot(3,2,5); plot(vperda_DPs,label="DPs"); legend()
+subplot(3,2,6); plot(vperda_DPc,label="DPc"); legend()
 
 show() #block=False
 
