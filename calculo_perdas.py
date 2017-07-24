@@ -37,7 +37,7 @@ V2 = 200     # Volts
 Ar = V1 + V2 # Volts
 
 # Valor eficaz da corrente de saída
-Ief = 5.4    # Aef
+Ief = 4.25    # Aef
 
 # Corrente Linear
 I_linear = True # "True" ou "False"
@@ -53,7 +53,7 @@ fat_crista = 3.0 # fat_crista >= srqt(2)
 fr = 60      # Hz
 
 # Frequência da portadora/chaveamento
-fp = 21600//2   # Hz
+fp = 21600   # Hz
 
 ###########################################################################
 # DEFINIÇÃO DE FUNÇÕES DE PERDA EM FUNCAO DO COMPONENTE UTILIZADO         #
@@ -110,19 +110,7 @@ def perdaChaveamentoD(i,vblock):
 
 def perdaConducaoDPonte(i):
     """retorna perda em J do DIODO em funcao da corrente"""
-    # UF5408
-##    if(i<0.01):
-##        Vceon = 0.6
-##    elif(i<1.7):
-##        a= -1.88919
-##        b=  6.76307
-##        c= -5.25758
-##        Vceon = (-b+sqrt(b**2-4*a*(c-log10(i))))/(2*a)
-##    else:
-##        a= 0.754014
-##        b=-0.50581
-##        Vceon = (log10(i)+b)/a
-    
+    # UF5408    
     if(i<0.01): Vceon = 0.6
     else:
         Vceon = 0.0430482*log10(i)**4 + 0.1598030*log10(i)**3 + \
@@ -161,6 +149,10 @@ def validacao(nome_variavel,logica_de_teste):
 def rms(v):
     """Calcula valor eficaz de uma lista de valores"""
     return (sum([x**2 for x in v])/len(v))**0.5
+
+def media(v):
+    """Calcula valor médio de uma lista de valores"""
+    return (sum(v)/len(v))
 
 def formaDeOndaCorrenteLinear(angulo,defasamento,fatorDeCrista):
     """
@@ -237,34 +229,30 @@ def grausParaRad(graus):
 ###########################################################################
 # DEFINIÇÃO DE FUNÇÕES TEMPORARIAS (apenas para desenvolvimento do codigo)#
 ###########################################################################
-def plotlevels(y=None):
+def plotlevels(ymax=None):
     """
-    Desenha linhas verticais nos angulos theta1 e theta2;
-    Desenha linhas horizontais nos níveis de tensão V1 e V2.
+    Desenha linhas verticais nos angulos theta1 e theta2, com barras
+    verticais de 0 a ymax, se fornecido, ou V1+V2 caso contrário.
     """
+    if ymax==None: ymax=V1+V2
+        
     ang1 = theta1*mf/(2*pi)
     ang2 = theta2*mf/(2*pi)
-    if y==None:
-        plot([0,mf],[V1,V1])
-        plot([0,mf],[V2,V2])
-        plot([ang1,ang1],[0,V1+V2])
-        plot([ang2,ang2],[0,V1+V2])
-    else:
-        maxy = max(y)
-        ang3 = theta3*mf/(2*pi)
-        ang4 = theta4*mf/(2*pi)
-        ang5 = theta5*mf/(2*pi)
-        ang6 = theta6*mf/(2*pi)
-        ang7 = theta7*mf/(2*pi)
-        ang8 = theta8*mf/(2*pi)
-        plot([ang1,ang1],[0,maxy])
-        plot([ang2,ang2],[0,maxy]) 
-        plot([ang3,ang3],[0,maxy])
-        plot([ang4,ang4],[0,maxy]) 
-        plot([ang5,ang5],[0,maxy])
-        plot([ang6,ang6],[0,maxy]) 
-        plot([ang7,ang7],[0,maxy])
-        plot([ang8,ang8],[0,maxy]) 
+    ang3 = theta3*mf/(2*pi)
+    ang4 = theta4*mf/(2*pi)
+    ang5 = theta5*mf/(2*pi)
+    ang6 = theta6*mf/(2*pi)
+    ang7 = theta7*mf/(2*pi)
+    ang8 = theta8*mf/(2*pi)
+    
+    plot([ang1,ang1],[0,ymax])
+    plot([ang2,ang2],[0,ymax]) 
+    plot([ang3,ang3],[0,ymax])
+    plot([ang4,ang4],[0,ymax]) 
+    plot([ang5,ang5],[0,ymax])
+    plot([ang6,ang6],[0,ymax]) 
+    plot([ang7,ang7],[0,ymax])
+    plot([ang8,ang8],[0,ymax]) 
 
 ###########################################################################
 # TESTES DE VALIDAÇÃO DAS ENTRADAS                                        #
@@ -344,26 +332,11 @@ chD = mf * ((tt5 - pi1) + (pi2 - tt8)) / (2*pi)
 chE = mf * ((tt6 - tt5) + (tt8 - tt7)) / (2*pi)
 chF = mf * ((tt7 - tt6)              ) / (2*pi)
 
-#perdas por chave em cada etapa
-#	Q1	Q4	Q5	Q2	Q3	Q6
-#A	0	D’	D	0	1	0
-#B	D	0	D’	0	D’	D
-#C	1	0	0	0	D’	D’
-#An	0	1	0	0	D’	D
-#Bn	0	D’	D	D	0	D’
-#Cn	0	D	D’	1	0	0
-
 # Vetores para armazenar dados calculados em cada ciclo de chaveamento.
 RAZAOCICLICA = []
 CORRENTE     = []
 TENSAOREF    = []
 POTENCIAINST = []
-vperda_Qs  = []
-vperda_Qc  = []
-vperda_Ds  = []
-vperda_Dc  = []
-vperda_DPs = []
-vperda_DPc = []
 
 #Variáveis para salvar as perdas em cada chave e diodo
 perda_S1Q = [] # Perda da Chave S1
@@ -392,6 +365,33 @@ perda_S6sQp = [] # Perda da Chave S6 (Chave bidirecional em série p/ i+)
 perda_S6sQn = [] # Perda da Chave S6 (Chave bidirecional em série p/ i-)
 perda_S6sDp = [] # Perda do Diodo em S6 (Chave bidir. em série p/ i+)
 perda_S6sDn = [] # Perda do Diodo em S6 (Chave bidir. em série p/ i-)
+
+i_S1Q = [] # Corrente na Chave S1
+i_S1D = [] # Corrente no Diodo em paralelo com a chave S1
+i_S2Q = [] # Corrente na Chave S2
+i_S2D = [] # Corrente no Diodo em paralelo com a chave S2
+i_S3Q = [] # Corrente na Chave S3
+i_S3D = [] # Corrente no Diodo em paralelo com a chave S3
+i_S4Q = [] # Corrente na Chave S4
+i_S4D = [] # Corrente no Diodo em paralelo com a chave S4
+
+i_S5pQ  = [] # Corrente na Chave S5 (Chave bidirecional em ponte de diodo)
+i_S5pDp = [] # Corrente no Diodo da Ponte em S5 (conduz com i_positivo)
+i_S5pDn = [] # Corrente no Diodo da Ponte em S5 (conduz com i_negativo)
+
+i_S6pQ  = [] # Corrente na Chave S6 (Chave bidirecional em ponte de diodo)
+i_S6pDp = [] # Corrente no Diodo da Ponte em S6 (conduz com i_positivo)
+i_S6pDn = [] # Corrente no Diodo da Ponte em S6 (conduz com i_negativo)
+
+i_S5sQp = [] # Corrente na Chave S5 (Chave bidirecional em série p/ i+)
+i_S5sQn = [] # Corrente na Chave S5 (Chave bidirecional em série p/ i-)
+i_S5sDp = [] # Corrente no Diodo em S5 (Chave bidir. em série p/ i+)
+i_S5sDn = [] # Corrente no Diodo em S5 (Chave bidir. em série p/ i-)
+
+i_S6sQp = [] # Corrente na Chave S6 (Chave bidirecional em série p/ i+)
+i_S6sQn = [] # Corrente na Chave S6 (Chave bidirecional em série p/ i-)
+i_S6sDp = [] # Corrente no Diodo em S6 (Chave bidir. em série p/ i+)
+i_S6sDn = [] # Corrente no Diodo em S6 (Chave bidir. em série p/ i-)
 
 # Temos "mf" ciclos de chaveamento durante um ciclo do sinal de referencia
 # Para cada ciclo de chaveamento, será calculado o ângulo do chaveamento,
@@ -425,7 +425,7 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
     elif(angulo <= theta6):
         intervalo = "E"      
     elif(angulo <= theta7):
-       intervalo = "F" 
+        intervalo = "F" 
     elif(angulo <= theta8):
         intervalo = "E"
     else: # angulo <= 2*pi:
@@ -462,13 +462,6 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
     perda_DPs = perdaChaveamentoDPonte(iabs,abs(vblock))
     perda_DPc = perdaConducaoDPonte(iabs)
 
-    vperda_Qs.append(perda_Qs )
-    vperda_Qc.append(perda_Qc )
-    vperda_Ds.append(perda_Ds )
-    vperda_Dc.append(perda_Dc )
-    vperda_DPs.append(perda_DPs)
-    vperda_DPc.append(perda_DPc)
-
     # Determinação do Sentido da Corrente
     i_positivo = (i >= 0)    
 
@@ -483,7 +476,7 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
         perda_S4D.append(perda_Dc *(1-d) + perda_Ds)
         perda_S5pQ.append(perda_Qc *( d ) + perda_Qs)
         perda_S5pDp.append(perda_DPc*( d ) + perda_DPs)
-		
+        
         perda_S5sQp.append(perda_Qc*( d ) + perda_Qs)
         perda_S5sDp.append(perda_Dc*( d ) + perda_Ds)
         
@@ -492,7 +485,7 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
         perda_S4Q.append(perda_Qc *(1-d) + perda_Qs)
         perda_S5pQ.append(perda_Qc *( d ) + perda_Qs)
         perda_S5pDn.append(perda_DPc*( d ) + perda_DPs)
-		
+        
         perda_S5sQn.append(perda_Qc*( d ) + perda_Qs)
         perda_S5sDn.append(perda_Dc*( d ) + perda_Ds)
         
@@ -502,13 +495,13 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
         perda_S5pQ.append(perda_Qc *(1-d) + perda_Qs)
         perda_S5pDp.append(perda_DPc*(1-d) + perda_DPs)
         perda_S6pQ.append(perda_Qc *( d ) + perda_Qs)
-        perda_S6pDp.append(perda_DPc*( d ) + perda_DPs)		
+        perda_S6pDp.append(perda_DPc*( d ) + perda_DPs)
 		
         perda_S5sQp.append(perda_Qc*(1-d) + perda_Qs)
         perda_S5sDp.append(perda_Dc*(1-d) + perda_Ds)
         perda_S6sQp.append(perda_Qc*( d ) + perda_Qs)
-        perda_S6sDp.append(perda_Dc*( d ) + perda_Ds)		
-
+        perda_S6sDp.append(perda_Dc*( d ) + perda_Ds)
+		
     elif intervalo == "B" and not i_positivo:
         perda_S1D.append(perda_Dc *( d ) + perda_Ds)
         perda_S3D.append(perda_Dc *(1-d) + perda_Ds)
@@ -604,6 +597,133 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
 
     else:
         print "error", intervalo, i_positivo
+		
+    if intervalo == "A" and i_positivo:
+        i_S3Q.append(iabs*( 1 ))
+        i_S4D.append(iabs*(1-d))
+        i_S5pQ.append(iabs*( d ))
+        i_S5pDp.append(iabs*( d ))
+        
+        i_S5sQp.append(iabs*( d ))
+        i_S5sDp.append(iabs*( d ))
+        
+    elif intervalo == "A" and not i_positivo:
+        i_S3D.append(iabs*( 1 ))
+        i_S4Q.append(iabs*(1-d))
+        i_S5pQ.append(iabs*( d ))
+        i_S5pDn.append(iabs*( d ))
+        
+        i_S5sQn.append(iabs*( d ))
+        i_S5sDn.append(iabs*( d ))
+        
+    elif intervalo == "B" and i_positivo:
+        i_S1Q.append(iabs*( d ))
+        i_S3Q.append(iabs*(1-d))
+        i_S5pQ.append(iabs*(1-d))
+        i_S5pDp.append(iabs*(1-d))
+        i_S6pQ.append(iabs*( d ))
+        i_S6pDp.append(iabs*( d ))
+		
+        i_S5sQp.append(iabs*(1-d))
+        i_S5sDp.append(iabs*(1-d))
+        i_S6sQp.append(iabs*( d ))
+        i_S6sDp.append(iabs*( d ))
+		
+    elif intervalo == "B" and not i_positivo:
+        i_S1D.append(iabs*( d ))
+        i_S3D.append(iabs*(1-d))
+        i_S5pQ.append(iabs*(1-d))
+        i_S5pDn.append(iabs*(1-d))
+        i_S6pQ.append(iabs*( d ))
+        i_S6pDn.append(iabs*( d ))
+		
+        i_S5sQn.append(iabs*(1-d))
+        i_S5sDn.append(iabs*(1-d))
+        i_S6sQn.append(iabs*( d ))
+        i_S6sDn.append(iabs*( d ))
+        
+    elif intervalo == "C" and i_positivo:
+        i_S1Q.append(iabs*( 1 ))
+        i_S3Q.append(iabs*( d ))
+        i_S6pQ.append(iabs*(1-d))
+        i_S6pDp.append(iabs*(1-d))
+		
+        i_S6sQp.append(iabs*(1-d))
+        i_S6sDp.append(iabs*(1-d))
+        
+    elif intervalo == "C" and not i_positivo:
+        i_S1D.append(iabs*( 1 ))
+        i_S3D.append(iabs*( d ))
+        i_S6pQ.append(iabs*(1-d))
+        i_S6pDn.append(iabs*(1-d))
+		
+        i_S6sQn.append(iabs*(1-d))
+        i_S6sDn.append(iabs*(1-d))
+        
+    elif intervalo == "D" and i_positivo:
+        i_S3Q.append(iabs*( d ))
+        i_S4D.append(iabs*( 1 ))
+        i_S6pQ.append(iabs*(1-d))
+        i_S6pDp.append(iabs*(1-d))
+		
+        i_S6sQp.append(iabs*(1-d))
+        i_S6sDp.append(iabs*(1-d))
+        
+    elif intervalo == "D" and not i_positivo:
+        i_S3D.append(iabs*( d ))
+        i_S4Q.append(iabs*( 1 ))
+        i_S6pQ.append(iabs*(1-d))
+        i_S6pDn.append(iabs*(1-d))
+		
+        i_S6sQn.append(iabs*(1-d))
+        i_S6sDn.append(iabs*(1-d))
+        
+    elif intervalo == "E" and i_positivo:
+        i_S2D.append(iabs*(1-d))
+        i_S4D.append(iabs*( d ))
+        i_S5pQ.append(iabs*(1-d))
+        i_S5pDp.append(iabs*(1-d))
+        i_S6pQ.append(iabs*( d ))
+        i_S6pDp.append(iabs*( d ))
+		
+        i_S5sQp.append(iabs*(1-d))
+        i_S5sDp.append(iabs*(1-d))
+        i_S6sQp.append(iabs*( d ))
+        i_S6sDp.append(iabs*( d ))
+        
+    elif intervalo == "E" and not i_positivo:
+        i_S2Q.append(iabs*(1-d))
+        i_S4Q.append(iabs*( d ))
+        i_S5pQ.append(iabs*(1-d))
+        i_S5pDn.append(iabs*(1-d))
+        i_S6pQ.append(iabs*( d ))
+        i_S6pDn.append(iabs*( d ))
+		
+        i_S5sQn.append(iabs*(1-d))
+        i_S5sDn.append(iabs*(1-d))
+        i_S6sQn.append(iabs*( d ))
+        i_S6sDn.append(iabs*( d ))
+        
+    elif intervalo == "F" and i_positivo:
+        i_S2D.append(iabs*( 1 ))
+        i_S4D.append(iabs*(1-d))
+        i_S5pQ.append(iabs*( d ))
+        i_S5pDp.append(iabs*( d ))
+		
+        i_S5sQp.append(iabs*( d ))
+        i_S5sDp.append(iabs*( d ))
+
+    elif intervalo == "F" and not i_positivo:
+        i_S2Q.append(iabs*( 1 ))
+        i_S4Q.append(iabs*(1-d))
+        i_S5pQ.append(iabs*( d ))
+        i_S5pDn.append(iabs*( d ))
+		
+        i_S5sQn.append(iabs*( d ))
+        i_S5sDn.append(iabs*( d ))
+
+    else:
+        print "error", intervalo, i_positivo
 
     #Insere ZERO nos vetores que não foram atualizados.
     if (k+1) > len(perda_S1Q):    perda_S1Q.append(0)
@@ -628,6 +748,29 @@ for k in range(int(mf)): # loop de k variando de 0,1,2 ... "mf"
     if (k+1) > len(perda_S6sQn):  perda_S6sQn.append(0)
     if (k+1) > len(perda_S6sDp):  perda_S6sDp.append(0)
     if (k+1) > len(perda_S6sDn):  perda_S6sDn.append(0)
+	
+    if (k+1) > len(i_S1Q):    i_S1Q.append(0)
+    if (k+1) > len(i_S1D):    i_S1D.append(0)
+    if (k+1) > len(i_S2Q):    i_S2Q.append(0)
+    if (k+1) > len(i_S2D):    i_S2D.append(0)
+    if (k+1) > len(i_S3Q):    i_S3Q.append(0)
+    if (k+1) > len(i_S3D):    i_S3D.append(0)
+    if (k+1) > len(i_S4Q):    i_S4Q.append(0)
+    if (k+1) > len(i_S4D):    i_S4D.append(0)
+    if (k+1) > len(i_S5pQ):   i_S5pQ.append(0)
+    if (k+1) > len(i_S5pDp):  i_S5pDp.append(0)
+    if (k+1) > len(i_S5pDn):  i_S5pDn.append(0)
+    if (k+1) > len(i_S6pQ):   i_S6pQ.append(0)
+    if (k+1) > len(i_S6pDp):  i_S6pDp.append(0)
+    if (k+1) > len(i_S6pDn):  i_S6pDn.append(0)
+    if (k+1) > len(i_S5sQp):  i_S5sQp.append(0)
+    if (k+1) > len(i_S5sQn):  i_S5sQn.append(0)
+    if (k+1) > len(i_S5sDp):  i_S5sDp.append(0)
+    if (k+1) > len(i_S5sDn):  i_S5sDn.append(0)
+    if (k+1) > len(i_S6sQp):  i_S6sQp.append(0)
+    if (k+1) > len(i_S6sQn):  i_S6sQn.append(0)
+    if (k+1) > len(i_S6sDp):  i_S6sDp.append(0)
+    if (k+1) > len(i_S6sDn):  i_S6sDn.append(0)
     
     # Salva os valores calculados neste chaveamento nos vetores
     # Para criação de gráfico.
@@ -688,30 +831,30 @@ sum_S6sDp = sum(perda_S6sDp)
 sum_S6sDn = sum(perda_S6sDn)
 
 print("Perdas nas chaves:")
-print("    S1 Q  = "+'{0:.2f}'.format(sum_S1Q) +" W")
-print("       D  = "+'{0:.2f}'.format(sum_S1D) +" W")
-print("    S2 Q  = "+'{0:.2f}'.format(sum_S2Q) +" W")
-print("       D  = "+'{0:.2f}'.format(sum_S2D) +" W")
-print("    S3 Q  = "+'{0:.2f}'.format(sum_S3Q) +" W")
-print("       D  = "+'{0:.2f}'.format(sum_S3D) +" W")
-print("    S4 Q  = "+'{0:.2f}'.format(sum_S4Q) +" W")
-print("       D  = "+'{0:.2f}'.format(sum_S4D) +" W")
+print("    S1 Q  = "+'{0:.2f}'.format(sum_S1Q) + " W. Imed = "+str(media(i_S1Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S1D) + " W. Imed = "+str(media(i_S1D  )))
+print("    S2 Q  = "+'{0:.2f}'.format(sum_S2Q) + " W. Imed = "+str(media(i_S2Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S2D) + " W. Imed = "+str(media(i_S2D  )))
+print("    S3 Q  = "+'{0:.2f}'.format(sum_S3Q) + " W. Imed = "+str(media(i_S3Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S3D) + " W. Imed = "+str(media(i_S3D  )))
+print("    S4 Q  = "+'{0:.2f}'.format(sum_S4Q) + " W. Imed = "+str(media(i_S4Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S4D) + " W. Imed = "+str(media(i_S4D  )))
 print(" Chave bidirecional com ponte de diodos:")
-print("    S5 Q  = "+'{0:.2f}'.format(sum_S5pQ) +" W")
-print("       Dp = "+'{0:.2f}'.format(sum_S5pDp)+" W")
-print("       Dn = "+'{0:.2f}'.format(sum_S5pDn)+" W")
-print("    S6 Q  = "+'{0:.2f}'.format(sum_S6pQ) +" W")
-print("       Dp = "+'{0:.2f}'.format(sum_S6pDp)+" W")
-print("       Dn = "+'{0:.2f}'.format(sum_S6pDn)+" W")
+print("    S5 Q  = "+'{0:.2f}'.format(sum_S5pQ) +" W. Imed = "+str(media(i_S5pQ) ))
+print("       Dp = "+'{0:.2f}'.format(sum_S5pDp)+" W. Imed = "+str(media(i_S5pDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S5pDn)+" W. Imed = "+str(media(i_S5pDn)))
+print("    S6 Q  = "+'{0:.2f}'.format(sum_S6pQ) +" W. Imed = "+str(media(i_S6pQ )))
+print("       Dp = "+'{0:.2f}'.format(sum_S6pDp)+" W. Imed = "+str(media(i_S6pDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S6pDn)+" W. Imed = "+str(media(i_S6pDn)))
 print(" Chave bidirecional em anti-série:")
-print("    S5 Qp = "+'{0:.2f}'.format(sum_S5sQp)+" W")
-print("       Qn = "+'{0:.2f}'.format(sum_S5sQn)+" W")
-print("       Dp = "+'{0:.2f}'.format(sum_S5sDp)+" W")
-print("       Dn = "+'{0:.2f}'.format(sum_S5sDn)+" W")
-print("    S6 Qp = "+'{0:.2f}'.format(sum_S6sQp)+" W")
-print("       Qn = "+'{0:.2f}'.format(sum_S6sQn)+" W")
-print("       Dp = "+'{0:.2f}'.format(sum_S6sDp)+" W")
-print("       Dn = "+'{0:.2f}'.format(sum_S6sDn)+" W")
+print("    S5 Qp = "+'{0:.2f}'.format(sum_S5sQp)+" W. Imed = "+str(media(i_S5sQp)))
+print("       Qn = "+'{0:.2f}'.format(sum_S5sQn)+" W. Imed = "+str(media(i_S5sQn)))
+print("       Dp = "+'{0:.2f}'.format(sum_S5sDp)+" W. Imed = "+str(media(i_S5sDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S5sDn)+" W. Imed = "+str(media(i_S5sDn)))
+print("    S6 Qp = "+'{0:.2f}'.format(sum_S6sQp)+" W. Imed = "+str(media(i_S6sQp)))
+print("       Qn = "+'{0:.2f}'.format(sum_S6sQn)+" W. Imed = "+str(media(i_S6sQn)))
+print("       Dp = "+'{0:.2f}'.format(sum_S6sDp)+" W. Imed = "+str(media(i_S6sDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S6sDn)+" W. Imed = "+str(media(i_S6sDn)))
 
 print("\n")
 potencia_saida = sum(POTENCIAINST)/len(POTENCIAINST)
@@ -729,6 +872,9 @@ perdasJ_bidir_2ch   = sum_S1Q +   sum_S1D + sum_S2Q +   sum_S2D +  \
 #Perdas em W calculadas para 1 segundo = perdasJ / t_ciclo = perdasJ*fr
 perdasW_bidir_ponte = perdasJ_bidir_ponte * fr
 perdasW_bidir_2ch   = perdasJ_bidir_2ch   * fr
+
+print("perdas (ponte) = "+str(perdasW_bidir_ponte)+" W")
+print("perdas (série) = "+str(perdasW_bidir_2ch)+" W")
                  
 rend_ponte = (potencia_saida - perdasW_bidir_ponte) / potencia_saida * 100
 rend_2ch   = (potencia_saida - perdasW_bidir_2ch  ) / potencia_saida * 100
@@ -755,7 +901,6 @@ figure()
 
 subplot(7,2,1)
 plot(perda_S1Q)#ok
-plotlevels()
 subplot(7,2,2)
 plot(perda_S1D)#ok
 
@@ -788,7 +933,6 @@ subplot(7,2,13)
 plot(perda_S6pDp)
 
 subplot(7,2,14)
-plotlevels(perda_S6pDn)
 plot(perda_S6pDn)
 
 figure()
@@ -802,15 +946,6 @@ subplot(4,2,5); plot(perda_S6sQp)
 subplot(4,2,6); plot(perda_S6sQn)
 subplot(4,2,7); plot(perda_S6sDp)
 subplot(4,2,8); plot(perda_S6sDn)
-
-figure()
-
-subplot(3,2,1); plot(vperda_Qs ,label="Qs"); legend()
-subplot(3,2,2); plot(vperda_Qc ,label="Qc"); legend()
-subplot(3,2,3); plot(vperda_Ds ,label="Ds"); legend()
-subplot(3,2,4); plot(vperda_Dc ,label="Dc"); legend()
-subplot(3,2,5); plot(vperda_DPs,label="DPs"); legend()
-subplot(3,2,6); plot(vperda_DPc,label="DPc"); legend()
 
 show() #block=False
 
