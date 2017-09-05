@@ -2,7 +2,8 @@
 # Script Python para cálculo de perdas de chaveamento na topologia        #
 # sete níveis proposta. Disponível em:                                    #
 # https://github.com/martinbra/mestrado_perdas7niveis/                    #
-#                                                                         # 
+# https://repl.it/KgxZ/0                                                  #
+#                                                                         #
 # Versão utilizada: Python 2.7                                            #
 ###########################################################################
 
@@ -15,10 +16,6 @@ from __future__ import division
 
 # Importa funções matemáticas utilizadas
 from math import sin, pi, asin, sqrt, floor, ceil, log10
-
-# Importa biblioteca para geração de gráficos
-from pylab import plot, show, xlabel, ylabel, legend, xlim, ylim,  \
-                  subplot, figure
 
 # Importa interpolacao de valor em lista
 import scipy.interpolate
@@ -39,15 +36,8 @@ Ar = V1 + V2 # Volts
 # Valor eficaz da corrente de saída
 Ief = 4.25    # Aef
 
-# Corrente Linear
-I_linear = True # "True" ou "False"
-
 # Defasamento Corrente, utilizado apenas para corrente linear 
 I_def = 0 # rad (-pi/2 <= I_def <= pi/2)
-
-# Fator de Crista, utilizado apenas para corrente não linear.
-# Simula Carga não linear como pulsos semi-senoidais (positivo e negativo)
-fat_crista = 3.0 # fat_crista >= srqt(2)
 
 # Frequência da senoide de referência a ser sintetizada
 fr = 60      # Hz
@@ -154,7 +144,7 @@ def media(v):
     """Calcula valor médio de uma lista de valores"""
     return (sum(v)/len(v))
 
-def formaDeOndaCorrenteLinear(angulo,defasamento,fatorDeCrista):
+def formaDeOndaCorrente(angulo,defasamento,fatorDeCrista):
     """
     Retorna o valor de uma corrente normalizada de 1 A eficaz
     para um ângulo da senoide tal que 0 <= angulo <2*pi
@@ -168,50 +158,6 @@ def formaDeOndaCorrenteLinear(angulo,defasamento,fatorDeCrista):
     corrente = amplitude * sin(angulo + defasamento)
 
     return corrente
-
-def formaDeOndaCorrenteNaoLinear(angulo,defasamento,fatorDeCrista):
-    """
-    Retorna o valor de uma corrente normalizada de 1 A eficaz
-    para um ângulo da senoide tal que 0 <= angulo <2*pi
-    com fator de crista "fatorDeCrista" determinado pelo usuário.
-    Simula corrente não linear como um pulso senoidal centrado
-    nos picos da senoide da tensão, similar a uma carga retificada.
-    defasamento ignorado.
-    """
-    # Amplitude == pico (Pico = FC*Ieficaz)
-    amplitude = fatorDeCrista 
-
-    # largura em radianos do pulso senoidal
-    alpha = 2*pi / fatorDeCrista**2
-
-    # Ângulos de conducao do pulso senoidal  
-    inicioPos =   pi/2 - alpha/2     #no semiciclo positivo
-    finalPos  =   pi/2 + alpha/2     #no semiciclo positivo
-    inicioNeg = 3*pi/2 - alpha/2     #no semiciclo negativo
-    finalNeg  = 3*pi/2 + alpha/2     #no semiciclo negativo
-    largura   = (finalPos-inicioPos) #Largura em rad do pulso.
-
-    # Se o ângulo em questão não está dentro do período do pulso
-    # Retorna "0", pois não conduz, corrente é nula.
-    if ((angulo < inicioPos) or                       
-        (angulo > finalPos and angulo < inicioNeg) or 
-        (angulo > finalNeg)):
-        return 0
-
-    # Se ângulo está dentro dos limites
-    else:
-        #Verifica semi-ciclo
-        if angulo < pi:
-            #semiciclo positivo
-            corrente = sin((pi*angulo - pi*inicioPos)/largura)
-            
-        else:
-            # semiciclo negativo
-            # corrente_neg(ang) = -corrente_pos(ang-pi)
-            corrente = -sin((pi*(angulo-pi) - pi*inicioPos)/largura)
-
-        #Retorna valor da corrente
-        return corrente*amplitude
 
 def arredondaAngulo(angulo):
     """Arredonda ângulo de entrada para concluir chaveamento anterior"""
@@ -227,34 +173,6 @@ def grausParaRad(graus):
     return 2*pi*graus/360
 
 ###########################################################################
-# DEFINIÇÃO DE FUNÇÕES TEMPORARIAS (apenas para desenvolvimento do codigo)#
-###########################################################################
-def plotlevels(ymax=None):
-    """
-    Desenha linhas verticais nos angulos theta1 e theta2, com barras
-    verticais de 0 a ymax, se fornecido, ou V1+V2 caso contrário.
-    """
-    if ymax==None: ymax=V1+V2
-        
-    ang1 = theta1*mf/(2*pi)
-    ang2 = theta2*mf/(2*pi)
-    ang3 = theta3*mf/(2*pi)
-    ang4 = theta4*mf/(2*pi)
-    ang5 = theta5*mf/(2*pi)
-    ang6 = theta6*mf/(2*pi)
-    ang7 = theta7*mf/(2*pi)
-    ang8 = theta8*mf/(2*pi)
-    
-    plot([ang1,ang1],[0,ymax])
-    plot([ang2,ang2],[0,ymax]) 
-    plot([ang3,ang3],[0,ymax])
-    plot([ang4,ang4],[0,ymax]) 
-    plot([ang5,ang5],[0,ymax])
-    plot([ang6,ang6],[0,ymax]) 
-    plot([ang7,ang7],[0,ymax])
-    plot([ang8,ang8],[0,ymax]) 
-
-###########################################################################
 # TESTES DE VALIDAÇÃO DAS ENTRADAS                                        #
 ###########################################################################
 # V1 deve ser menor que V2
@@ -268,23 +186,10 @@ validacao("fp", fp > fr )
 # Não se pode modular se portadora tiver frequência menor que referencia
 validacao("fp", fp > fr )
 
-# Se Corrente for Linear:
-if(I_linear ==True):
-    # Defasamento Corrente, utilizado apenas para corrente linear 
-    validacao("I_def", (-pi/2 <= I_def <= pi/2) )
-    # Utiliza a função formaDeOndaCorrenteLinear para a corrente.
-    formaDeOndaCorrente = formaDeOndaCorrenteLinear
-    # Fator de Crista Padrão
-    fat_crista = sqrt(2)
-    
-# Se corrente for Não Linear    
-else:
-    # Fator de Crista é no mínimo raiz(2) para carga não linear.
-    validacao("fat_crista", fat_crista >= sqrt(2) )
-    # Utiliza a função formaDeOndaCorrenteLinear para a corrente.
-    formaDeOndaCorrente = formaDeOndaCorrenteNaoLinear
-    # Defasamento padrao
-    I_def = 0
+# Defasamento Corrente 
+validacao("I_def", (-pi/2 <= I_def and I_def <= pi/2) )
+# Fator de Crista Padrão
+fat_crista = sqrt(2)
  
 ###########################################################################
 # CALCULO DE PARAMETROS DE CHAVEAMENTO                                    #
@@ -789,9 +694,8 @@ print("Vref calc.   = "+str(rms(TENSAOREF))+" Vef")
 print("Ief          = "+str(Ief)+" Aef")
 print("Ief calculado= "+str(rms(CORRENTE))+" Aef")
 
-if I_linear:
-    print("I_def        = "+str(I_def)+" rad")
-    print("             = "+str(radParaGraus(I_def))+" graus")
+print("I_def        = "+str(I_def)+" rad")
+print("             = "+str(radParaGraus(I_def))+" graus")
 
 print("Fator de Crista  = "+str(fat_crista))
 print("Freq Vref        = "+str(fr)+" Hz")
@@ -831,42 +735,64 @@ sum_S6sDp = sum(perda_S6sDp)
 sum_S6sDn = sum(perda_S6sDn)
 
 print("Perdas nas chaves:")
-print("    S1 Q  = "+'{0:.2f}'.format(sum_S1Q) + " W. Imed = "+str(media(i_S1Q  )))
-print("       D  = "+'{0:.2f}'.format(sum_S1D) + " W. Imed = "+str(media(i_S1D  )))
-print("    S2 Q  = "+'{0:.2f}'.format(sum_S2Q) + " W. Imed = "+str(media(i_S2Q  )))
-print("       D  = "+'{0:.2f}'.format(sum_S2D) + " W. Imed = "+str(media(i_S2D  )))
-print("    S3 Q  = "+'{0:.2f}'.format(sum_S3Q) + " W. Imed = "+str(media(i_S3Q  )))
-print("       D  = "+'{0:.2f}'.format(sum_S3D) + " W. Imed = "+str(media(i_S3D  )))
-print("    S4 Q  = "+'{0:.2f}'.format(sum_S4Q) + " W. Imed = "+str(media(i_S4Q  )))
-print("       D  = "+'{0:.2f}'.format(sum_S4D) + " W. Imed = "+str(media(i_S4D  )))
+print("    S1 Q  = "+'{0:.2f}'.format(sum_S1Q) + " W. Imed = " \
+                                                    + str(media(i_S1Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S1D) + " W. Imed = " \
+                                                    +str(media(i_S1D  )))
+print("    S2 Q  = "+'{0:.2f}'.format(sum_S2Q) + " W. Imed = " \
+                                                    +str(media(i_S2Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S2D) + " W. Imed = " \
+                                                    +str(media(i_S2D  )))
+print("    S3 Q  = "+'{0:.2f}'.format(sum_S3Q) + " W. Imed = " \
+                                                    +str(media(i_S3Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S3D) + " W. Imed = " \
+                                                    +str(media(i_S3D  )))
+print("    S4 Q  = "+'{0:.2f}'.format(sum_S4Q) + " W. Imed = " \
+                                                    +str(media(i_S4Q  )))
+print("       D  = "+'{0:.2f}'.format(sum_S4D) + " W. Imed = " \
+                                                    +str(media(i_S4D  )))
 print(" Chave bidirecional com ponte de diodos:")
-print("    S5 Q  = "+'{0:.2f}'.format(sum_S5pQ) +" W. Imed = "+str(media(i_S5pQ) ))
-print("       Dp = "+'{0:.2f}'.format(sum_S5pDp)+" W. Imed = "+str(media(i_S5pDp)))
-print("       Dn = "+'{0:.2f}'.format(sum_S5pDn)+" W. Imed = "+str(media(i_S5pDn)))
-print("    S6 Q  = "+'{0:.2f}'.format(sum_S6pQ) +" W. Imed = "+str(media(i_S6pQ )))
-print("       Dp = "+'{0:.2f}'.format(sum_S6pDp)+" W. Imed = "+str(media(i_S6pDp)))
-print("       Dn = "+'{0:.2f}'.format(sum_S6pDn)+" W. Imed = "+str(media(i_S6pDn)))
+print("    S5 Q  = "+'{0:.2f}'.format(sum_S5pQ) +" W. Imed = " \
+                                                    +str(media(i_S5pQ) ))
+print("       Dp = "+'{0:.2f}'.format(sum_S5pDp)+" W. Imed = " \
+                                                    +str(media(i_S5pDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S5pDn)+" W. Imed = " \
+                                                    +str(media(i_S5pDn)))
+print("    S6 Q  = "+'{0:.2f}'.format(sum_S6pQ) +" W. Imed = " \
+                                                    +str(media(i_S6pQ )))
+print("       Dp = "+'{0:.2f}'.format(sum_S6pDp)+" W. Imed = " \
+                                                    +str(media(i_S6pDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S6pDn)+" W. Imed = " \
+                                                    +str(media(i_S6pDn)))
 print(" Chave bidirecional em anti-série:")
-print("    S5 Qp = "+'{0:.2f}'.format(sum_S5sQp)+" W. Imed = "+str(media(i_S5sQp)))
-print("       Qn = "+'{0:.2f}'.format(sum_S5sQn)+" W. Imed = "+str(media(i_S5sQn)))
-print("       Dp = "+'{0:.2f}'.format(sum_S5sDp)+" W. Imed = "+str(media(i_S5sDp)))
-print("       Dn = "+'{0:.2f}'.format(sum_S5sDn)+" W. Imed = "+str(media(i_S5sDn)))
-print("    S6 Qp = "+'{0:.2f}'.format(sum_S6sQp)+" W. Imed = "+str(media(i_S6sQp)))
-print("       Qn = "+'{0:.2f}'.format(sum_S6sQn)+" W. Imed = "+str(media(i_S6sQn)))
-print("       Dp = "+'{0:.2f}'.format(sum_S6sDp)+" W. Imed = "+str(media(i_S6sDp)))
-print("       Dn = "+'{0:.2f}'.format(sum_S6sDn)+" W. Imed = "+str(media(i_S6sDn)))
+print("    S5 Qp = "+'{0:.2f}'.format(sum_S5sQp)+" W. Imed = " \
+                                                    +str(media(i_S5sQp)))
+print("       Qn = "+'{0:.2f}'.format(sum_S5sQn)+" W. Imed = " \
+                                                    +str(media(i_S5sQn)))
+print("       Dp = "+'{0:.2f}'.format(sum_S5sDp)+" W. Imed = " \
+                                                    +str(media(i_S5sDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S5sDn)+" W. Imed = " \
+                                                    +str(media(i_S5sDn)))
+print("    S6 Qp = "+'{0:.2f}'.format(sum_S6sQp)+" W. Imed = " \
+                                                    +str(media(i_S6sQp)))
+print("       Qn = "+'{0:.2f}'.format(sum_S6sQn)+" W. Imed = " \
+                                                    +str(media(i_S6sQn)))
+print("       Dp = "+'{0:.2f}'.format(sum_S6sDp)+" W. Imed = " \
+                                                    +str(media(i_S6sDp)))
+print("       Dn = "+'{0:.2f}'.format(sum_S6sDn)+" W. Imed = " \
+                                                    +str(media(i_S6sDn)))
 
 print("\n")
 potencia_saida = sum(POTENCIAINST)/len(POTENCIAINST)
-perdasJ_bidir_ponte = sum_S1Q +   sum_S1D  + sum_S2Q + sum_S2D +  \
-                      sum_S3Q +   sum_S3D  + sum_S4Q + sum_S4D +  \
+perdasJ_bidir_ponte = sum_S1Q  +   sum_S1D   + sum_S2Q + sum_S2D +  \
+                      sum_S3Q  +   sum_S3D   + sum_S4Q + sum_S4D +  \
                       sum_S5pQ + 2*sum_S5pDp + 2*sum_S5pDn       +  \
                       sum_S6pQ + 2*sum_S6pDp + 2*sum_S6pDn
 
-perdasJ_bidir_2ch   = sum_S1Q +   sum_S1D + sum_S2Q +   sum_S2D +  \
-                      sum_S3Q +   sum_S3D + sum_S4Q +   sum_S4D +  \
-                  sum_S5sQp + sum_S5sDp + sum_S5sQn + sum_S5sDn +  \
-                  sum_S6sQp + sum_S6sDp + sum_S6sQn + sum_S6sDn
+perdasJ_bidir_2ch   = sum_S1Q   + sum_S1D   + sum_S2Q   + sum_S2D   +  \
+                      sum_S3Q   + sum_S3D   + sum_S4Q   + sum_S4D   +  \
+                      sum_S5sQp + sum_S5sDp + sum_S5sQn + sum_S5sDn +  \
+                      sum_S6sQp + sum_S6sDp + sum_S6sQn + sum_S6sDn
 
 #Perdas em J calculadas para 1 ciclo.
 #Perdas em W calculadas para 1 segundo = perdasJ / t_ciclo = perdasJ*fr
@@ -879,73 +805,12 @@ print("perdas (série) = "+str(perdasW_bidir_2ch)+" W")
 rend_ponte = (potencia_saida - perdasW_bidir_ponte) / potencia_saida * 100
 rend_2ch   = (potencia_saida - perdasW_bidir_2ch  ) / potencia_saida * 100
 print("Potencia Total das fontes = "+str(potencia_saida)+" W")
-print("Potencia De saída (ponte) = "+str(potencia_saida-perdasW_bidir_ponte)+" W")
-print("Potencia De saída (série) = "+str(potencia_saida-perdasW_bidir_2ch)+" W")
+print("Potencia De saída (ponte) = " \
+                             +str(potencia_saida-perdasW_bidir_ponte)+" W")
+print("Potencia De saída (série) = " \
+                             +str(potencia_saida-perdasW_bidir_2ch)+" W")
 
 print("Topologia com chave bidirecional em ponte de diodo")
 print("    Rendimento = "+'{0:.2f}'.format(rend_ponte)+" %")
 print("Topologia com chave bidirecional em anti-série")
 print("    Rendimento = "+'{0:.2f}'.format(rend_2ch)  +" %")
-
-# Gera gráfico das formas de onda.
-plot(RAZAOCICLICA,label=u"Razão Cíclica (%)")
-plot(CORRENTE,label=u"Corrente (A)")
-plot(TENSAOREF,label=u"Tensão de Referência (V)")
-legend()
-xlabel(u"Índice do Ciclo de Chaveamento")
-ylabel(u"Amplitude")
-xlim([0,mf])
-ylim([min(-V1-V2,min(CORRENTE))*1.1,max(V1+V2,max(CORRENTE))*1.1])
-
-figure()
-
-subplot(7,2,1)
-plot(perda_S1Q)#ok
-subplot(7,2,2)
-plot(perda_S1D)#ok
-
-subplot(7,2,3)
-plot(perda_S2Q)#ok
-subplot(7,2,4)
-plot(perda_S2D)#ok
-
-subplot(7,2,5)
-plot(perda_S3Q)#ok
-subplot(7,2,6)
-plot(perda_S3D)#ok
-
-subplot(7,2,7)
-plot(perda_S4Q)#ok
-subplot(7,2,8)
-plot(perda_S4D)#ok
-
-subplot(7,2,9)
-plot(perda_S5pQ)#ok
-subplot(7,2,10)
-plot(perda_S5pDp)
-
-subplot(7,2,11)
-plot(perda_S5pDn)
-
-subplot(7,2,12)
-plot(perda_S6pQ)#ok
-subplot(7,2,13)
-plot(perda_S6pDp)
-
-subplot(7,2,14)
-plot(perda_S6pDn)
-
-figure()
-
-subplot(4,2,1); plot(perda_S5sQp)
-subplot(4,2,2); plot(perda_S5sQn)
-subplot(4,2,3); plot(perda_S5sDp)
-subplot(4,2,4); plot(perda_S5sDn)
-
-subplot(4,2,5); plot(perda_S6sQp)
-subplot(4,2,6); plot(perda_S6sQn)
-subplot(4,2,7); plot(perda_S6sDp)
-subplot(4,2,8); plot(perda_S6sDn)
-
-show() #block=False
-
