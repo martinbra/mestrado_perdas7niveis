@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###########################################################################
 # Script Python para cálculo de perdas de chaveamento na topologia        #
 # sete níveis proposta. Disponível em:                                    #
